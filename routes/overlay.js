@@ -9,7 +9,7 @@ const { validateOverlayRequest } = require('../utils/validation');
 
 router.post('/', async (req, res) => {
     const requestId = uuidv4();
-    console.log(`[${requestId}] Processing overlay request`);
+    console.log(`[${requestId}] 🎬 Processing overlay request`);
 
     try {
         // Validate request
@@ -22,17 +22,12 @@ router.post('/', async (req, res) => {
             });
         }
 
-        const { videoUrl, text, fontSize = 24, fontColor = 'black', fontFamily = 'sans-serif' } = req.body;
+        const { videoUrl, text } = req.body;
 
-        console.log(`[${requestId}] Request details:`, {
+        console.log(`[${requestId}] 📋 Request details:`, {
             videoUrl: videoUrl.substring(0, 50) + '...',
-            text,
-            fontSize,
-            fontColor,
-            fontFamily
-        });
-
-        // Create temporary filename for input video
+            text: text
+        });        // Create temporary filename for input video
         const tempDir = process.env.TEMP_DIR || './temp';
         const outputDir = process.env.OUTPUT_DIR || './output';
 
@@ -43,26 +38,30 @@ router.post('/', async (req, res) => {
         const outputPath = path.join(outputDir, outputFileName);
 
         // Step 1: Download video from Google Drive
-        console.log(`[${requestId}] Downloading video from Google Drive...`);
+        console.log(`[${requestId}] 📥 Downloading video from Google Drive...`);
         await downloadVideoFromGDrive(videoUrl, inputPath);
-        console.log(`[${requestId}] Video downloaded successfully`);
+        console.log(`[${requestId}] ✅ Video downloaded successfully`);
 
-        // Step 2: Add text overlay
-        console.log(`[${requestId}] Adding text overlay...`);
+        // Step 2: Add text overlay with hardcoded styling
+        console.log(`[${requestId}] 🎨 Adding text overlay...`);
         await addTextOverlay(inputPath, outputPath, {
             text,
-            fontSize,
-            fontColor,
-            fontFamily
+            fontSize: 24,
+            fontColor: 'black',
+            fontFamily: 'sans-serif',
+            fontFile: './ARIALBD.TTF',
+            backgroundColor: '#FFFACD@0.8' // Light yellow
         });
-        console.log(`[${requestId}] Text overlay added successfully`);
+        console.log(`[${requestId}] ✅ Text overlay added successfully`);
 
         // Step 3: Clean up input file
         await fs.remove(inputPath);
-        console.log(`[${requestId}] Temporary files cleaned up`);
+        console.log(`[${requestId}] 🧹 Temporary files cleaned up`);
 
         // Step 4: Return download URL
         const downloadUrl = `/api/download/${outputFileName}`;
+
+        console.log(`[${requestId}] 🎉 Request completed successfully`);
 
         res.json({
             success: true,
@@ -72,10 +71,8 @@ router.post('/', async (req, res) => {
             requestId
         });
 
-        console.log(`[${requestId}] Request completed successfully`);
-
     } catch (error) {
-        console.error(`[${requestId}] Error processing request:`, error);
+        console.error(`[${requestId}] ❌ Error processing request:`, error);
 
         // Clean up any temporary files
         try {

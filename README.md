@@ -93,15 +93,4 @@ Make sure your Google Drive video is publicly accessible. The URL should be in t
 To get the direct download link, the API converts it to:
 `https://drive.google.com/uc?export=download&id=FILE_ID`
 
-## Deployment to Oracle Cloud
 
-1. Set up Oracle Cloud Compute Instance
-2. Install Node.js and FFmpeg on the instance
-3. Configure environment variables
-4. Set up reverse proxy with Nginx
-5. Configure SSL certificates
-6. Set up process manager (PM2)
-
-## License
-
-MIT

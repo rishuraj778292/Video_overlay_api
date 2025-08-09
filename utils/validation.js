@@ -1,7 +1,7 @@
 const { isValidGDriveUrl } = require('./driveUtils');
 
 /**
- * Validate overlay request body
+ * Validate overlay request body (simplified - only URL and text)
  * @param {object} body - Request body
  * @returns {object} - Validation result
  */
@@ -23,25 +23,6 @@ function validateOverlayRequest(body) {
         errors.push('text must be a string');
     } else if (body.text.length > 100) {
         errors.push('text must be 100 characters or less');
-    }
-
-    // Validate optional fields
-    if (body.fontSize !== undefined) {
-        if (!Number.isInteger(body.fontSize) || body.fontSize < 8 || body.fontSize > 72) {
-            errors.push('fontSize must be an integer between 8 and 72');
-        }
-    }
-
-    if (body.fontColor !== undefined) {
-        if (typeof body.fontColor !== 'string' || !isValidColor(body.fontColor)) {
-            errors.push('fontColor must be a valid color (e.g., "white", "red", "#FF0000", "rgb(255,0,0)")');
-        }
-    }
-
-    if (body.fontFamily !== undefined) {
-        if (typeof body.fontFamily !== 'string' || body.fontFamily.length > 50) {
-            errors.push('fontFamily must be a string with 50 characters or less');
-        }
     }
 
     return {

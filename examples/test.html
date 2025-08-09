@@ -98,16 +98,24 @@
 
         .download-link {
             display: inline-block;
-            margin-top: 10px;
-            padding: 8px 20px;
+            margin-top: 15px;
+            padding: 12px 25px;
             background-color: #28a745;
             color: white;
             text-decoration: none;
-            border-radius: 5px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            text-align: center;
+            min-width: 200px;
+            transition: background-color 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .download-link:hover {
             background-color: #218838;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
         }
 
         .example {
@@ -134,9 +142,18 @@
                 <li>Make sure your Google Drive video is <strong>publicly accessible</strong></li>
                 <li>Use the sharing URL format: <code>https://drive.google.com/file/d/FILE_ID/view</code></li>
                 <li>Enter your custom text (max 100 characters)</li>
-                <li>Customize font settings if desired</li>
-                <li>Click "Add Overlay" and wait for processing</li>
+                <li>Text will auto-wrap every 30 characters and respect manual line breaks</li>
+                <li>Click "Add Overlay" and <strong>check browser console</strong> for detailed progress</li>
+                <li>Wait for processing (may take 2-10 minutes depending on video size)</li>
             </ol>
+            <p><strong>🎨 Text Styling (Fixed Settings):</strong></p>
+            <ul>
+                <li>✅ Font: ARIAL BOLD (ARIALBD.TTF)</li>
+                <li>✅ Font Size: 24px</li>
+                <li>✅ Color: Black text on light yellow background</li>
+                <li>✅ Text wrapping (30 characters per line)</li>
+                <li>✅ Centered positioning at top of video</li>
+            </ul>
         </div>
 
         <form id="overlayForm">
@@ -149,40 +166,9 @@
             <div class="form-group">
                 <label for="text">Overlay Text *</label>
                 <textarea id="text" name="text" required maxlength="100"
-                    placeholder="Enter your text overlay (max 100 characters)"></textarea>
-                <small id="charCount">0/100 characters</small>
-            </div>
-
-            <div class="form-group">
-                <label for="fontSize">Font Size (8-72)</label>
-                <input type="number" id="fontSize" name="fontSize" min="8" max="72" value="24">
-            </div>
-
-            <div class="form-group">
-                <label for="fontColor">Font Color</label>
-                <select id="fontColor" name="fontColor">
-                    <option value="black" selected>Black</option>
-                    <option value="white">White</option>
-                    <option value="red">Red</option>
-                    <option value="blue">Blue</option>
-                    <option value="green">Green</option>
-                    <option value="yellow">Yellow</option>
-                    <option value="#FF0000">Custom Red (#FF0000)</option>
-                    <option value="#00FF00">Custom Green (#00FF00)</option>
-                    <option value="#0000FF">Custom Blue (#0000FF)</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="fontFamily">Font Family</label>
-                <select id="fontFamily" name="fontFamily">
-                    <option value="sans-serif" selected>Sans-serif</option>
-                    <option value="Arial">Arial</option>
-                    <option value="Times New Roman">Times New Roman</option>
-                    <option value="Helvetica">Helvetica</option>
-                    <option value="Georgia">Georgia</option>
-                    <option value="Verdana">Verdana</option>
-                </select>
+                    placeholder="Enter your text overlay. Use Enter for line breaks. Auto-wraps at 30 chars per line."></textarea>
+                <small id="charCount">0/100 characters • Lines auto-wrap at 30 characters • Use Enter for manual line
+                    breaks</small>
             </div>
 
             <button type="submit" id="submitBtn">🎬 Add Overlay to Video</button>
@@ -201,7 +187,7 @@
         // Character counter
         textArea.addEventListener('input', function () {
             const count = this.value.length;
-            charCount.textContent = `${count}/100 characters`;
+            charCount.textContent = `${count}/100 characters • Lines auto-wrap at 30 characters • Use Enter for manual line breaks`;
             charCount.style.color = count > 100 ? 'red' : '#666';
         });
 
@@ -211,10 +197,7 @@
             const formData = new FormData(form);
             const data = {
                 videoUrl: formData.get('videoUrl'),
-                text: formData.get('text'),
-                fontSize: parseInt(formData.get('fontSize')),
-                fontColor: formData.get('fontColor'),
-                fontFamily: formData.get('fontFamily')
+                text: formData.get('text')
             };
 
             // Validation
@@ -236,9 +219,13 @@
             // Show loading
             submitBtn.disabled = true;
             submitBtn.textContent = '⏳ Processing Video...';
-            showResult('Processing your video... This may take a few minutes depending on video size.', 'loading');
+            showResult('🚀 Starting video processing... Please wait, this may take a few minutes.', 'loading');
+
+            console.log('📤 Sending request to server:', data);
 
             try {
+                console.log('🌐 Making API call to /api/overlay...');
+
                 const response = await fetch('http://localhost:3000/api/overlay', {
                     method: 'POST',
                     headers: {
@@ -247,21 +234,38 @@
                     body: JSON.stringify(data)
                 });
 
+                console.log('📨 Response received, status:', response.status);
+
+                if (!response.ok) {
+                    console.error('❌ HTTP error:', response.status, response.statusText);
+                }
+
                 const responseData = await response.json();
+                console.log('📋 Response data:', responseData);
 
                 if (response.ok && responseData.success) {
+                    console.log('✅ Processing successful!');
                     const downloadUrl = `http://localhost:3000${responseData.downloadUrl}`;
+                    console.log('📥 Download URL:', downloadUrl);
+
                     showResult(
-                        `✅ Video processed successfully! 
-                        <a href="${downloadUrl}" class="download-link" download>📥 Download Video</a>`,
+                        `✅ Video processed successfully!<br><br>
+                        <div style="text-align: center;">
+                            <a href="${downloadUrl}" class="download-link" download>
+                                🎬 Download Processed Video
+                            </a>
+                        </div>
+                        <br><small>File: ${responseData.filename}</small>
+                        <br><small>Request ID: ${responseData.requestId}</small>`,
                         'success'
                     );
                 } else {
+                    console.error('❌ Processing failed:', responseData);
                     throw new Error(responseData.error || responseData.message || 'Processing failed');
                 }
 
             } catch (error) {
-                console.error('Error:', error);
+                console.error('❌ Error occurred:', error);
                 showResult(`❌ Error: ${error.message}`, 'error');
             } finally {
                 submitBtn.disabled = false;
