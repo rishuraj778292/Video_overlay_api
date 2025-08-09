@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Overlay API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        textarea {
+            height: 60px;
+            resize: vertical;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .loading {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+
+        .download-link {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 8px 20px;
+            background-color: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+
+        .download-link:hover {
+            background-color: #218838;
+        }
+
+        .example {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .example h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🎬 Video Overlay API Test</h1>
+
+        <div class="example">
+            <h3>📝 Instructions:</h3>
+            <ol>
+                <li>Make sure your Google Drive video is <strong>publicly accessible</strong></li>
+                <li>Use the sharing URL format: <code>https://drive.google.com/file/d/FILE_ID/view</code></li>
+                <li>Enter your custom text (max 100 characters)</li>
+                <li>Customize font settings if desired</li>
+                <li>Click "Add Overlay" and wait for processing</li>
+            </ol>
+        </div>
+
+        <form id="overlayForm">
+            <div class="form-group">
+                <label for="videoUrl">Google Drive Video URL *</label>
+                <input type="url" id="videoUrl" name="videoUrl" required
+                    placeholder="https://drive.google.com/file/d/YOUR_FILE_ID/view">
+            </div>
+
+            <div class="form-group">
+                <label for="text">Overlay Text *</label>
+                <textarea id="text" name="text" required maxlength="100"
+                    placeholder="Enter your text overlay (max 100 characters)"></textarea>
+                <small id="charCount">0/100 characters</small>
+            </div>
+
+            <div class="form-group">
+                <label for="fontSize">Font Size (8-72)</label>
+                <input type="number" id="fontSize" name="fontSize" min="8" max="72" value="24">
+            </div>
+
+            <div class="form-group">
+                <label for="fontColor">Font Color</label>
+                <select id="fontColor" name="fontColor">
+                    <option value="black" selected>Black</option>
+                    <option value="white">White</option>
+                    <option value="red">Red</option>
+                    <option value="blue">Blue</option>
+                    <option value="green">Green</option>
+                    <option value="yellow">Yellow</option>
+                    <option value="#FF0000">Custom Red (#FF0000)</option>
+                    <option value="#00FF00">Custom Green (#00FF00)</option>
+                    <option value="#0000FF">Custom Blue (#0000FF)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="fontFamily">Font Family</label>
+                <select id="fontFamily" name="fontFamily">
+                    <option value="sans-serif" selected>Sans-serif</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Helvetica">Helvetica</option>
+                    <option value="Georgia">Georgia</option>
+                    <option value="Verdana">Verdana</option>
+                </select>
+            </div>
+
+            <button type="submit" id="submitBtn">🎬 Add Overlay to Video</button>
+        </form>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('overlayForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const result = document.getElementById('result');
+        const textArea = document.getElementById('text');
+        const charCount = document.getElementById('charCount');
+
+        // Character counter
+        textArea.addEventListener('input', function () {
+            const count = this.value.length;
+            charCount.textContent = `${count}/100 characters`;
+            charCount.style.color = count > 100 ? 'red' : '#666';
+        });
+
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const data = {
+                videoUrl: formData.get('videoUrl'),
+                text: formData.get('text'),
+                fontSize: parseInt(formData.get('fontSize')),
+                fontColor: formData.get('fontColor'),
+                fontFamily: formData.get('fontFamily')
+            };
+
+            // Validation
+            if (!data.videoUrl || !data.text) {
+                showResult('Please fill in all required fields.', 'error');
+                return;
+            }
+
+            if (!data.videoUrl.includes('drive.google.com')) {
+                showResult('Please enter a valid Google Drive URL.', 'error');
+                return;
+            }
+
+            if (data.text.length > 100) {
+                showResult('Text must be 100 characters or less.', 'error');
+                return;
+            }
+
+            // Show loading
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Processing Video...';
+            showResult('Processing your video... This may take a few minutes depending on video size.', 'loading');
+
+            try {
+                const response = await fetch('http://localhost:3000/api/overlay', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const responseData = await response.json();
+
+                if (response.ok && responseData.success) {
+                    const downloadUrl = `http://localhost:3000${responseData.downloadUrl}`;
+                    showResult(
+                        `✅ Video processed successfully! 
+                        <a href="${downloadUrl}" class="download-link" download>📥 Download Video</a>`,
+                        'success'
+                    );
+                } else {
+                    throw new Error(responseData.error || responseData.message || 'Processing failed');
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                showResult(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🎬 Add Overlay to Video';
+            }
+        });
+
+        function showResult(message, type) {
+            result.innerHTML = message;
+            result.className = `result ${type}`;
+            result.style.display = 'block';
+        }
+
+        // Auto-hide results when form is modified
+        form.addEventListener('input', function () {
+            if (result.style.display === 'block') {
+                result.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+
+</html>
