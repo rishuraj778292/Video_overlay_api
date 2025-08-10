@@ -59,7 +59,7 @@ router.post('/', async (req, res) => {
         console.log(`[${requestId}] 🧹 Temporary files cleaned up`);
 
         // Step 4: Return download URL
-        const downloadUrl = `/api/download/${outputFileName}`;
+        const downloadUrl = `https://video-overlay-api-17wf.onrender.com/api/overlay/api/download/${outputFileName}`;
 
         console.log(`[${requestId}] 🎉 Request completed successfully`);
 
