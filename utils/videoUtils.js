@@ -146,12 +146,14 @@ async function addTextOverlay(inputPath, outputPath, options = {}) {
             const ffmpegFontPath = fontFile.replace(/\\/g, '/');
 
             const drawTextFilters = [];
-            const lineHeight = fontSize ; // Small padding between lines
+            const verticalPadding = 0; // Padding above and below text
+            const boxHeight = fontSize + (verticalPadding * 2); // Actual box height with padding
+            const gap = 6; // Space between boxes
 
             wrappedLines.forEach((line, index) => {
                 if (line.trim() === '') return; // Skip empty lines
 
-                const yPosition = 20+ (index * lineHeight); // Calculate Y position for each line
+                const yPosition = 30 + (index * (boxHeight + gap)); // Use actual box height for even spacing
                 let filter;
 
                 if (fontFile && fs.existsSync(fontFile)) {
