@@ -41,11 +41,8 @@ function getDirectDownloadUrl(shareUrl) {
  */
 async function downloadVideoFromGDrive(driveUrl, outputPath) {
     try {
-        console.log('Processing Google Drive URL:', driveUrl);
-
         // Convert to direct download URL
         const downloadUrl = getDirectDownloadUrl(driveUrl);
-        console.log('Direct download URL:', downloadUrl);
 
         // Ensure output directory exists
         await fs.ensureDir(require('path').dirname(outputPath));
@@ -74,7 +71,6 @@ async function downloadVideoFromGDrive(driveUrl, outputPath) {
 
         return new Promise((resolve, reject) => {
             writer.on('finish', () => {
-                console.log('Download completed:', outputPath);
                 resolve();
             });
 

@@ -15,19 +15,10 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({
     origin: process.env.CORS_ORIGIN || '*'
 }));
-app.use(express.json({ limit: '100mb' })); // Removed file size limit
-app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+app.use(express.json({ limit: '300mb' })); // Removed file size limit
+app.use(express.urlencoded({ extended: true, limit: '300mb' }));
 
-// Memory monitoring for Render
-if (process.env.NODE_ENV === 'production') {
-    setInterval(() => {
-        const used = process.memoryUsage();
-        const memMB = Math.round(used.rss / 1024 / 1024);
-        if (memMB > 400) { // Warn at 400MB (80% of 512MB limit)
-            console.warn(`⚠️ High memory usage: ${memMB}MB`);
-        }
-    }, 30000); // Check every 30 seconds
-}
+
 
 // Ensure required directories exist
 ensureDirectories();
@@ -78,12 +69,9 @@ app.use('*', (req, res) => {
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-    console.log('Shutting down gracefully...');
-
     // Clean up temp files
     try {
         await fs.emptyDir(process.env.TEMP_DIR || './temp');
-        console.log('Temp files cleaned up');
     } catch (error) {
         console.error('Error cleaning temp files:', error);
     }
@@ -92,9 +80,5 @@ process.on('SIGINT', async () => {
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Video Overlay API running on port ${PORT}`);
-    console.log(`📁 Temp directory: ${process.env.TEMP_DIR || './temp'}`);
-    console.log(`📁 Output directory: ${process.env.OUTPUT_DIR || './output'}`);
-    console.log(`🌐 Access the API at: http://localhost:${PORT}`);
-    console.log("latest commit");
+    console.log(`Video Overlay API running on port ${PORT}`);
 });

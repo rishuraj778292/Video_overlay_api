@@ -9,55 +9,32 @@ try {
     // Try to use static binaries first (for Railway, Heroku, etc.)
     const ffmpegStatic = require('ffmpeg-static');
     const ffprobeStatic = require('ffprobe-static');
-    
-    console.log('📦 Static packages found:');
-    console.log('- ffmpeg-static:', ffmpegStatic);
-    console.log('- ffprobe-static.path:', ffprobeStatic.path);
-    
+
     // Verify the files exist before setting them
     if (ffmpegStatic && fs.existsSync(ffmpegStatic)) {
         ffmpeg.setFfmpegPath(ffmpegStatic);
-        console.log('✅ FFmpeg path configured:', ffmpegStatic);
-    } else {
-        console.log('❌ FFmpeg static binary not found at:', ffmpegStatic);
     }
-    
+
     if (ffprobeStatic.path && fs.existsSync(ffprobeStatic.path)) {
         ffmpeg.setFfprobePath(ffprobeStatic.path);
-        console.log('✅ FFprobe path configured:', ffprobeStatic.path);
         ffmpegConfigured = true;
-    } else {
-        console.log('❌ FFprobe static binary not found at:', ffprobeStatic.path);
-    }
-    
-    if (ffmpegConfigured) {
-        console.log('✅ Using static FFmpeg binaries successfully');
     }
 } catch (error) {
-    console.log('⚠️ Error loading static FFmpeg binaries:', error.message);
-    console.log('📋 Falling back to system binaries or environment variables');
-    
     // Fallback to environment variables or system binaries
     if (process.env.FFMPEG_PATH) {
         ffmpeg.setFfmpegPath(process.env.FFMPEG_PATH);
-        console.log('🔧 Using FFMPEG_PATH:', process.env.FFMPEG_PATH);
     }
     if (process.env.FFPROBE_PATH) {
         ffmpeg.setFfprobePath(process.env.FFPROBE_PATH);
-        console.log('🔧 Using FFPROBE_PATH:', process.env.FFPROBE_PATH);
     }
 }
 
 // Test ffprobe availability with a simple version check
-console.log('🧪 Testing ffprobe availability...');
 const { spawn } = require('child_process');
 
 // Get the ffprobe path that was set
-const ffprobePath = ffmpeg()._getAvailableCodecs ? 
+const ffprobePath = ffmpeg()._getAvailableCodecs ?
     ffmpeg.getAvailableFormats ? 'system-ffprobe' : 'configured-ffprobe' : 'unknown';
-
-console.log('🔍 FFprobe should be available for video processing');
-console.log('📊 FFmpeg configuration completed');
 
 /**
  * Add text overlay with video structure (blue background + scaled video + text)
@@ -89,29 +66,21 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
 
     // Advanced text wrapping: handles user line breaks + 47char auto-wrap
     function wrapText(text, maxCharsPerLine = 30) {
-        console.log('📝 Original text input:', JSON.stringify(text));
-
         // Step 1: Split by user-entered line breaks (preserve manual breaks)
         const userLines = text.split(/\r?\n/);
-        console.log('📋 User lines after split:', userLines);
-
         const finalLines = [];
 
         // Step 2: Process each user line for auto-wrapping at 47 chars
         userLines.forEach((line, lineIndex) => {
-            console.log(`🔍 Processing line ${lineIndex + 1}: "${line}" (length: ${line.length})`);
-
             if (line.trim() === '') {
                 // Empty line - preserve it
                 finalLines.push('');
-                console.log('➡️ Added empty line');
                 return;
             }
 
             // If line is 30 chars or less, keep as is
             if (line.length <= maxCharsPerLine) {
                 finalLines.push(line.trim());
-                console.log(`➡️ Line fits: "${line.trim()}"`);
                 return;
             }
 
@@ -128,7 +97,6 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
                     // Current line is full, start new line
                     if (currentLine) {
                         finalLines.push(currentLine);
-                        console.log(`➡️ Added wrapped line: "${currentLine}"`);
                         currentLine = word;
                     } else {
                         // Single word is longer than 30 chars - split it
@@ -137,7 +105,6 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
                             while (remainingWord.length > maxCharsPerLine) {
                                 const chunk = remainingWord.substring(0, maxCharsPerLine);
                                 finalLines.push(chunk);
-                                console.log(`➡️ Added word chunk: "${chunk}"`);
                                 remainingWord = remainingWord.substring(maxCharsPerLine);
                             }
                             if (remainingWord) {
@@ -153,12 +120,8 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
             // Add any remaining text
             if (currentLine) {
                 finalLines.push(currentLine);
-                console.log(`➡️ Added final line: "${currentLine}"`);
             }
         });
-
-        console.log('✅ Final wrapped lines:', finalLines);
-        console.log('📊 Total lines created:', finalLines.length);
 
         return finalLines; // Return array of lines
     }
@@ -169,14 +132,9 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
     // Ensure output directory exists
     const outputDir = path.dirname(outputPath);
     await fs.ensureDir(outputDir);
-    console.log('📁 Ensured directories exist:', { outputDir });
 
     return new Promise(async (resolve, reject) => {
         try {
-            console.log('🎬 Starting FFmpeg processing with video structure...');
-            console.log('📁 Input file:', inputPath);
-            console.log('📁 Output file:', outputPath);
-
             // Convert Windows paths to forward slashes for FFmpeg
             const ffmpegFontPath = fontFile.replace(/\\/g, '/');
 
@@ -189,8 +147,6 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
 
             // Get video duration
             const videoDuration = videoInfo.format.duration || videoStream.duration;
-
-            console.log('📹 Original video dimensions:', { originalWidth, originalHeight, aspectRatio, duration: videoDuration });
 
             // Create canvas with same aspect ratio but larger size
             const canvasHeight = 1080; // Fixed height
@@ -220,17 +176,6 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
             const videoX = Math.round((canvasWidth - scaledVideoWidth) / 2);
             const videoY = topPadding + 45;
 
-            console.log('🎨 Canvas and video layout:', {
-                canvasWidth,
-                canvasHeight,
-                scaledVideoWidth,
-                scaledVideoHeight,
-                videoX,
-                videoY,
-                topPadding,
-                sidePadding
-            });
-
             // Use complex filter to create the desired layout
             const complexFilterParts = [
                 // Create background canvas with video duration
@@ -249,7 +194,7 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
 
                 // Position boxes with slight overlap to eliminate gaps between them
                 // Reduce spacing by border width to make boxes touch/overlap
-                const boxSpacing = fixedBoxHeight - (borderWidth * 2)-10;
+                const boxSpacing = fixedBoxHeight - (borderWidth * 2) - 10;
                 const boxY = 30 + (index * boxSpacing);
                 // Use simple calculation for centering (compatible with older FFmpeg)
                 const textY = boxY + Math.floor((fixedBoxHeight - fontSize) / 2);
@@ -264,18 +209,10 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
 
                 complexFilterParts.push(drawTextFilter);
                 currentInput = `[text${index}]`;
-
-                console.log(`📝 Line ${index + 1}: "${line}" at boxY=${boxY}, textY=${textY} with overlapping positioning (spacing=${boxSpacing})`);
             });
 
             // Join all filter parts with semicolons
             const complexFilter = complexFilterParts.join(';');
-
-            if (fontFile && fs.existsSync(fontFile)) {
-                console.log('🔤 Using custom font file:', fontFile);
-            }
-
-            console.log('🎛️ FFmpeg complex filter:', complexFilter);
 
             const command = ffmpeg(inputPath)
                 .complexFilter(complexFilter)
@@ -288,28 +225,18 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
                     '-f mp4'            // Force MP4 output format
                 ])
                 .output(outputPath)
-                .on('start', (commandLine) => {
-                    console.log('🚀 FFmpeg command started:', commandLine);
-                })
-                .on('progress', (progress) => {
-                    if (progress.percent) {
-                        console.log(`⏳ Processing: ${Math.round(progress.percent)}% done (${progress.timemark})`);
-                    }
-                })
                 .on('end', async () => {
-                    console.log('✅ FFmpeg processing completed successfully');
-                    console.log('📁 Output file created:', outputPath);
                     resolve();
                 })
                 .on('error', async (error) => {
-                    console.error('❌ FFmpeg error:', error);
+                    console.error(' FFmpeg error:', error);
                     reject(new Error(`Video processing failed: ${error.message}`));
                 });
 
             // Start the processing
             command.run();
         } catch (error) {
-            console.error('❌ Error setting up FFmpeg:', error);
+            console.error('Error setting up FFmpeg:', error);
             reject(error);
         }
     });
@@ -322,20 +249,10 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
  */
 async function getVideoInfo(videoPath) {
     return new Promise((resolve, reject) => {
-        console.log(`🔍 Attempting to get video info for: ${videoPath}`);
-        console.log(`📁 File exists: ${fs.existsSync(videoPath)}`);
-        
         ffmpeg.ffprobe(videoPath, (error, metadata) => {
             if (error) {
-                console.log(`❌ FFprobe error details:`, {
-                    message: error.message,
-                    code: error.code,
-                    cmd: error.cmd
-                });
-                console.log(`🔧 Troubleshooting: This usually indicates ffprobe is not properly installed or configured`);
                 reject(new Error(`Failed to get video info: ${error.message}`));
             } else {
-                console.log(`✅ Successfully got video metadata`);
                 resolve(metadata);
             }
         });
@@ -382,7 +299,6 @@ async function createThumbnail(videoPath, thumbnailPath, timeStamp = 1) {
                 size: '320x240'
             })
             .on('end', () => {
-                console.log('Thumbnail created:', thumbnailPath);
                 resolve();
             })
             .on('error', (error) => {

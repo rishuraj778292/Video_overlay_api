@@ -5,7 +5,6 @@ const fs = require('fs-extra');
 
 router.get('/:filename', async (req, res) => {
     try {
-        console.log("call recieved")
         const { filename } = req.params;
         const outputDir = process.env.OUTPUT_DIR || './output';
         const filePath = path.join(outputDir, filename);
@@ -14,15 +13,8 @@ router.get('/:filename', async (req, res) => {
         const normalizedPath = path.normalize(path.resolve(filePath));
         const normalizedOutputDir = path.normalize(path.resolve(outputDir));
 
-        console.log('🔍 Path validation:');
-        console.log('  - Filename:', filename);
-        console.log('  - File path:', filePath);
-        console.log('  - Normalized file path:', normalizedPath);
-        console.log('  - Normalized output dir:', normalizedOutputDir);
-        console.log('  - Starts with check:', normalizedPath.startsWith(normalizedOutputDir));
-
         if (!normalizedPath.startsWith(normalizedOutputDir)) {
-            console.error('❌ Security check failed - path traversal detected');
+            console.error('Security check failed - path traversal detected');
             return res.status(400).json({
                 success: false,
                 error: 'Invalid filename'
@@ -67,15 +59,11 @@ router.get('/:filename', async (req, res) => {
             stream.pipe(res);
         }
 
-        // Log download
-        console.log(`File downloaded: ${filename} (${(fileSize / 1024 / 1024).toFixed(2)} MB)`);
-
         // Auto-delete file after serving for Render storage optimization
         setTimeout(async () => {
             try {
                 if (await fs.pathExists(filePath)) {
                     await fs.remove(filePath);
-                    console.log(`Auto-deleted: ${filename}`);
                 }
             } catch (error) {
                 console.error(`Error auto-deleting ${filename}:`, error);

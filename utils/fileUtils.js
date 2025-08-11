@@ -11,7 +11,6 @@ async function ensureDirectories() {
     try {
         await fs.ensureDir(tempDir);
         await fs.ensureDir(outputDir);
-        console.log('Required directories ensured:', { tempDir, outputDir });
     } catch (error) {
         console.error('Error creating directories:', error);
         throw error;
@@ -39,7 +38,6 @@ async function cleanupOldFiles(directory, maxAgeHours = 24) {
 
             if (now - stats.mtimeMs > maxAgeMs) {
                 await fs.remove(filePath);
-                console.log(`Cleaned up old file: ${file}`);
             }
         }
     } catch (error) {
@@ -128,7 +126,6 @@ async function safeRemove(filePath) {
     try {
         if (await fs.pathExists(filePath)) {
             await fs.remove(filePath);
-            console.log(`Removed file: ${filePath}`);
         }
     } catch (error) {
         console.error(`Error removing file ${filePath}:`, error);
