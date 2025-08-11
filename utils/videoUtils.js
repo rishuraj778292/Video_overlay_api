@@ -2,9 +2,28 @@ const ffmpeg = require('fluent-ffmpeg');
 const path = require('path');
 const fs = require('fs-extra');
 
-// Set FFmpeg path if specified in environment
-if (process.env.FFMPEG_PATH) {
-    ffmpeg.setFfmpegPath(process.env.FFMPEG_PATH);
+// Configure FFmpeg and FFprobe paths for deployment environments
+try {
+    // Try to use static binaries first (for Railway, Heroku, etc.)
+    const ffmpegStatic = require('ffmpeg-static');
+    const ffprobeStatic = require('ffprobe-static');
+    
+    ffmpeg.setFfmpegPath(ffmpegStatic);
+    ffmpeg.setFfprobePath(ffprobeStatic.path);
+    
+    console.log('✅ Using static FFmpeg binaries');
+    console.log('FFmpeg path:', ffmpegStatic);
+    console.log('FFprobe path:', ffprobeStatic.path);
+} catch (error) {
+    console.log('⚠️ Static FFmpeg binaries not found, using system binaries');
+    
+    // Fallback to environment variables or system binaries
+    if (process.env.FFMPEG_PATH) {
+        ffmpeg.setFfmpegPath(process.env.FFMPEG_PATH);
+    }
+    if (process.env.FFPROBE_PATH) {
+        ffmpeg.setFfprobePath(process.env.FFPROBE_PATH);
+    }
 }
 
 /**
