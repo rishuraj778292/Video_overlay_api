@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs-extra');
 const { downloadVideoFromGDrive } = require('../utils/driveUtils');
-const { addTextOverlay } = require('../utils/videoUtils');
+const { addTextOverlayWithStructure } = require('../utils/videoUtils');
 const { validateOverlayRequest } = require('../utils/validation');
 
 router.post('/', async (req, res) => {
@@ -42,15 +42,27 @@ router.post('/', async (req, res) => {
         await downloadVideoFromGDrive(videoUrl, inputPath);
         console.log(`[${requestId}] ✅ Video downloaded successfully`);
 
-        // Step 2: Add text overlay with hardcoded styling
-        console.log(`[${requestId}] 🎨 Adding text overlay...`);
-        await addTextOverlay(inputPath, outputPath, {
+        // Step 2: Add text overlay with video structure (light blue background + scaled video + text)
+        console.log(`[${requestId}] 🎨 Adding text overlay with video structure...`);
+        await addTextOverlayWithStructure(inputPath, outputPath, {
             text,
-            fontSize: 24,
+            fontSize: 24, // Smaller font size to fit in fixed height boxes
             fontColor: 'black',
             fontFamily: 'sans-serif',
             fontFile: './ARIALBD.TTF',
-            backgroundColor: '#FFFACD@0.8' // Light yellow
+            backgroundColor: '#fffbb3', // Light yellow text background
+            backgroundVideoColor: '#00d9ff', // Light blue video background color
+            borderWidth: 7, // Reduced border width for cleaner look
+            borderColor: '#333333', // Dark gray border
+            textPadding: 6, // Padding around text inside the box
+            lineSpacing: 0, // Zero spacing for connected boxes
+            fixedBoxHeight: 40, // Fixed height for uniform text boxes (centered text)
+            videoWidth: 1200, // Reduced video width
+            videoHeight: 675, // Proportional video height (16:9 aspect)
+            videoX: 40, // Small left padding
+            videoY: 140, // Enough top padding for text
+            canvasWidth: 1280, // Reduced canvas width
+            canvasHeight: 855 // Reduced canvas height (140 + 675 + 40 padding)
         });
         console.log(`[${requestId}] ✅ Text overlay added successfully`);
 

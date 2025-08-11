@@ -8,26 +8,35 @@ if (process.env.FFMPEG_PATH) {
 }
 
 /**
- * Add text overlay to video
+ * Add text overlay with video structure (blue background + scaled video + text)
  * @param {string} inputPath - Path to input video
  * @param {string} outputPath - Path to output video
  * @param {object} options - Text overlay options
  */
-async function addTextOverlay(inputPath, outputPath, options = {}) {
+async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) {
     const {
         text = 'Sample Text',
         fontSize = 24,
         fontColor = 'black',
         fontFamily = 'sans-serif',
         fontFile = './ARIALBD.TTF', // Hardcoded font file in main folder
-        position = 'top-center',
-        backgroundColor = '#FFFACD@0.8', // Light yellow/cream
-        borderWidth = 4,
-        borderColor = 'black'
+        backgroundColor = '#fffbb3', // Text background
+        backgroundVideoColor = '#00d9ff', // Video background color
+        borderWidth = 7, // Border width for text box
+        borderColor = 'black',
+        textPadding = 3, // Padding around text inside the box
+        lineSpacing = 0, // Space between text lines (set to 0 for connected boxes)
+        fixedBoxHeight = 60, // Fixed height for all text boxes
+        videoWidth = 900, // Scaled video width
+        videoHeight = 1520, // Scaled video height
+        videoX = 60, // Video position X
+        videoY = 120, // Video position Y
+        canvasWidth = 1080, // Canvas width
+        canvasHeight = 1920// Canvas height
     } = options;
 
-    // Advanced text wrapping: handles user line breaks + 30 char auto-wrap
-    function wrapText(text, maxCharsPerLine = 30) {
+    // Advanced text wrapping: handles user line breaks + 47char auto-wrap
+    function wrapText(text, maxCharsPerLine = 47) {
         console.log('📝 Original text input:', JSON.stringify(text));
 
         // Step 1: Split by user-entered line breaks (preserve manual breaks)
@@ -36,7 +45,7 @@ async function addTextOverlay(inputPath, outputPath, options = {}) {
 
         const finalLines = [];
 
-        // Step 2: Process each user line for auto-wrapping at 30 chars
+        // Step 2: Process each user line for auto-wrapping at 47 chars
         userLines.forEach((line, lineIndex) => {
             console.log(`🔍 Processing line ${lineIndex + 1}: "${line}" (length: ${line.length})`);
 
@@ -103,86 +112,126 @@ async function addTextOverlay(inputPath, outputPath, options = {}) {
     }
 
     // Format and wrap the text
-    const wrappedLines = wrapText(text, 30);
-
-    // Create text file for FFmpeg to use
-    const tempDir = process.env.TEMP_DIR || './temp';
-    const textFileName = `text_${Date.now()}_${Math.random().toString(36).substring(7)}.txt`;
-    const textFilePath = path.join(tempDir, textFileName);
-
-    // Ensure temp directory exists
-    await fs.ensureDir(tempDir);
+    const wrappedLines = wrapText(text, 47);
 
     // Ensure output directory exists
     const outputDir = path.dirname(outputPath);
     await fs.ensureDir(outputDir);
-    console.log('📁 Ensured directories exist:', { tempDir, outputDir });
-
-    // Write wrapped text to file (each line on separate line)
-    const textContent = wrappedLines.join('\n');
-    await fs.writeFile(textFilePath, textContent, 'utf8');
-
-    console.log('📄 Created text file:', textFilePath);
-    console.log('📝 Text file content:');
-    console.log(textContent);
+    console.log('📁 Ensured directories exist:', { outputDir });
 
     return new Promise(async (resolve, reject) => {
         try {
-            console.log('🎬 Starting FFmpeg processing...');
+            console.log('🎬 Starting FFmpeg processing with video structure...');
             console.log('📁 Input file:', inputPath);
             console.log('📁 Output file:', outputPath);
-            console.log('🎨 Text options:', {
-                originalText: text,
-                wrappedLines: wrappedLines,
-                textFilePath: textFilePath,
-                fontSize,
-                fontColor,
-                fontFamily,
-                fontFile
-            });
 
-            // Build multiple drawtext filters - one for each line to create separate boxes
             // Convert Windows paths to forward slashes for FFmpeg
             const ffmpegFontPath = fontFile.replace(/\\/g, '/');
 
-            const drawTextFilters = [];
-            const verticalPadding = 0; // Padding above and below text
-            const boxHeight = fontSize + (verticalPadding * 2); // Actual box height with padding
-            const gap = 6; // Space between boxes
+            // Get video info first to determine aspect ratio
+            const videoInfo = await getVideoInfo(inputPath);
+            const videoStream = videoInfo.streams.find(stream => stream.codec_type === 'video');
+            const originalWidth = videoStream.width;
+            const originalHeight = videoStream.height;
+            const aspectRatio = originalWidth / originalHeight;
+
+            // Get video duration
+            const videoDuration = videoInfo.format.duration || videoStream.duration;
+
+            console.log('📹 Original video dimensions:', { originalWidth, originalHeight, aspectRatio, duration: videoDuration });
+
+            // Create canvas with same aspect ratio but larger size
+            const canvasHeight = 1080; // Fixed height
+            const canvasWidth = Math.round(canvasHeight * aspectRatio);
+
+            // Add more top padding for text area
+            const topPadding = 140; // Increased top padding for text
+            const sidePadding = 45;  // Side padding
+
+            // Scale down video to create padding
+            const availableHeight = canvasHeight - topPadding - sidePadding;
+            const availableWidth = canvasWidth - (sidePadding * 2);
+
+            // Calculate video size maintaining aspect ratio
+            let scaledVideoWidth, scaledVideoHeight;
+            if (availableWidth / availableHeight > aspectRatio) {
+                // Height is the limiting factor
+                scaledVideoHeight = availableHeight;
+                scaledVideoWidth = Math.round(availableHeight * aspectRatio);
+            } else {
+                // Width is the limiting factor
+                scaledVideoWidth = availableWidth;
+                scaledVideoHeight = Math.round(availableWidth / aspectRatio);
+            }
+
+            // Position video (centered horizontally, with top padding)
+            const videoX = Math.round((canvasWidth - scaledVideoWidth) / 2);
+            const videoY = topPadding + 45;
+
+            console.log('🎨 Canvas and video layout:', {
+                canvasWidth,
+                canvasHeight,
+                scaledVideoWidth,
+                scaledVideoHeight,
+                videoX,
+                videoY,
+                topPadding,
+                sidePadding
+            });
+
+            // Use complex filter to create the desired layout
+            const complexFilterParts = [
+                // Create background canvas with video duration
+                `color=c=${backgroundVideoColor}:s=${canvasWidth}x${canvasHeight}:d=${videoDuration}[bg]`,
+                // Scale video to fit with padding
+                `[0:v]scale=${scaledVideoWidth}:${scaledVideoHeight}:force_original_aspect_ratio=decrease,setpts=PTS-STARTPTS[video]`,
+                // Overlay video on background
+                `[bg][video]overlay=${videoX}:${videoY}[base]`
+            ];
+
+            // Add text overlays in the top padding area with fixed height boxes and zero gaps
+            let currentInput = '[base]';
 
             wrappedLines.forEach((line, index) => {
                 if (line.trim() === '') return; // Skip empty lines
 
-                const yPosition = 30 + (index * (boxHeight + gap)); // Use actual box height for even spacing
-                let filter;
+                // Position boxes with zero gap between them
+                const boxY = 20 + (index * fixedBoxHeight);
+                // Center text vertically within the fixed height box
+                const textY = boxY + (fixedBoxHeight - fontSize) / 2;
+                const outputLabel = index === wrappedLines.length - 1 ? '' : `[text${index}]`;
 
+                let drawTextFilter;
                 if (fontFile && fs.existsSync(fontFile)) {
-                    filter = `drawtext=fontfile='${ffmpegFontPath}':text='${line.replace(/'/g, "\\'")}':fontsize=${fontSize}:fontcolor=${fontColor}:x=(w-text_w)/2:y=${yPosition}:box=1:boxcolor=${backgroundColor}:boxborderw=${borderWidth}:bordercolor=${borderColor}`;
-                } else if (fontFamily !== 'sans-serif') {
-                    filter = `drawtext=fontfile='${fontFamily}':text='${line.replace(/'/g, "\\'")}':fontsize=${fontSize}:fontcolor=${fontColor}:x=(w-text_w)/2:y=${yPosition}:box=1:boxcolor=${backgroundColor}:boxborderw=${borderWidth}:bordercolor=${borderColor}`;
+                    drawTextFilter = `${currentInput}drawtext=fontfile='${ffmpegFontPath}':text='${line.replace(/'/g, "\\'")}':fontsize=${fontSize}:fontcolor=${fontColor}:x=(w-text_w)/2:y=${textY}:box=1:boxcolor=${backgroundColor}@0.9:boxborderw=${borderWidth}:bordercolor=${borderColor}:boxh=${fixedBoxHeight}${outputLabel}`;
                 } else {
-                    filter = `drawtext=text='${line.replace(/'/g, "\\'")}':fontsize=${fontSize}:fontcolor=${fontColor}:x=(w-text_w)/2:y=${yPosition}:box=1:boxcolor=${backgroundColor}:boxborderw=${borderWidth}:bordercolor=${borderColor}`;
+                    drawTextFilter = `${currentInput}drawtext=text='${line.replace(/'/g, "\\'")}':fontsize=${fontSize}:fontcolor=${fontColor}:x=(w-text_w)/2:y=${textY}:box=1:boxcolor=${backgroundColor}@0.9:boxborderw=${borderWidth}:bordercolor=${borderColor}:boxh=${fixedBoxHeight}${outputLabel}`;
                 }
 
-                drawTextFilters.push(filter);
-                console.log(`📝 Line ${index + 1}: "${line}" at Y=${yPosition}`);
+                complexFilterParts.push(drawTextFilter);
+                currentInput = `[text${index}]`;
+
+                console.log(`📝 Line ${index + 1}: "${line}" at boxY=${boxY}, textY=${textY} with fixed height=${fixedBoxHeight}px`);
             });
+
+            // Join all filter parts with semicolons
+            const complexFilter = complexFilterParts.join(';');
 
             if (fontFile && fs.existsSync(fontFile)) {
                 console.log('🔤 Using custom font file:', fontFile);
             }
 
-            console.log('🎛️ FFmpeg filters:', drawTextFilters);
+            console.log('🎛️ FFmpeg complex filter:', complexFilter);
 
             const command = ffmpeg(inputPath)
-                .videoFilters(drawTextFilters)
+                .complexFilter(complexFilter)
                 .outputOptions([
                     '-c:v libx264',     // Use H.264 codec
                     '-c:a copy',        // Copy audio without re-encoding
-                    '-preset ultrafast', // Faster encoding for Render's limited resources
-                    '-crf 28',          // Higher CRF for smaller file size and faster processing
+                    '-preset ultrafast', // Faster encoding
+                    '-crf 28',          // Higher CRF for smaller file size
                     '-movflags +faststart', // Optimize for web streaming
-                    '-f mp4'            // Force MP4 output format for consistency
+                    '-f mp4'            // Force MP4 output format
                 ])
                 .output(outputPath)
                 .on('start', (commandLine) => {
@@ -196,28 +245,10 @@ async function addTextOverlay(inputPath, outputPath, options = {}) {
                 .on('end', async () => {
                     console.log('✅ FFmpeg processing completed successfully');
                     console.log('📁 Output file created:', outputPath);
-
-                    // Clean up the text file
-                    try {
-                        await fs.remove(textFilePath);
-                        console.log('🧹 Text file cleaned up:', textFilePath);
-                    } catch (cleanupError) {
-                        console.error('⚠️ Error cleaning up text file:', cleanupError);
-                    }
-
                     resolve();
                 })
                 .on('error', async (error) => {
                     console.error('❌ FFmpeg error:', error);
-
-                    // Clean up the text file even on error
-                    try {
-                        await fs.remove(textFilePath);
-                        console.log('🧹 Text file cleaned up after error:', textFilePath);
-                    } catch (cleanupError) {
-                        console.error('⚠️ Error cleaning up text file:', cleanupError);
-                    }
-
                     reject(new Error(`Video processing failed: ${error.message}`));
                 });
 
@@ -225,13 +256,6 @@ async function addTextOverlay(inputPath, outputPath, options = {}) {
             command.run();
         } catch (error) {
             console.error('❌ Error setting up FFmpeg:', error);
-            // Clean up the text file on setup error
-            try {
-                await fs.remove(textFilePath);
-                console.log('🧹 Text file cleaned up after setup error:', textFilePath);
-            } catch (cleanupError) {
-                console.error('⚠️ Error cleaning up text file:', cleanupError);
-            }
             reject(error);
         }
     });
@@ -305,9 +329,11 @@ async function createThumbnail(videoPath, thumbnailPath, timeStamp = 1) {
 }
 
 module.exports = {
-    addTextOverlay,
+
+    addTextOverlayWithStructure,
     getVideoInfo,
     isValidVideo,
     getVideoDuration,
     createThumbnail
 };
+
