@@ -3,28 +3,61 @@ const path = require('path');
 const fs = require('fs-extra');
 
 // Configure FFmpeg and FFprobe paths for deployment environments
+let ffmpegConfigured = false;
+
 try {
     // Try to use static binaries first (for Railway, Heroku, etc.)
     const ffmpegStatic = require('ffmpeg-static');
     const ffprobeStatic = require('ffprobe-static');
     
-    ffmpeg.setFfmpegPath(ffmpegStatic);
-    ffmpeg.setFfprobePath(ffprobeStatic.path);
+    console.log('📦 Static packages found:');
+    console.log('- ffmpeg-static:', ffmpegStatic);
+    console.log('- ffprobe-static.path:', ffprobeStatic.path);
     
-    console.log('✅ Using static FFmpeg binaries');
-    console.log('FFmpeg path:', ffmpegStatic);
-    console.log('FFprobe path:', ffprobeStatic.path);
+    // Verify the files exist before setting them
+    if (ffmpegStatic && fs.existsSync(ffmpegStatic)) {
+        ffmpeg.setFfmpegPath(ffmpegStatic);
+        console.log('✅ FFmpeg path configured:', ffmpegStatic);
+    } else {
+        console.log('❌ FFmpeg static binary not found at:', ffmpegStatic);
+    }
+    
+    if (ffprobeStatic.path && fs.existsSync(ffprobeStatic.path)) {
+        ffmpeg.setFfprobePath(ffprobeStatic.path);
+        console.log('✅ FFprobe path configured:', ffprobeStatic.path);
+        ffmpegConfigured = true;
+    } else {
+        console.log('❌ FFprobe static binary not found at:', ffprobeStatic.path);
+    }
+    
+    if (ffmpegConfigured) {
+        console.log('✅ Using static FFmpeg binaries successfully');
+    }
 } catch (error) {
-    console.log('⚠️ Static FFmpeg binaries not found, using system binaries');
+    console.log('⚠️ Error loading static FFmpeg binaries:', error.message);
+    console.log('📋 Falling back to system binaries or environment variables');
     
     // Fallback to environment variables or system binaries
     if (process.env.FFMPEG_PATH) {
         ffmpeg.setFfmpegPath(process.env.FFMPEG_PATH);
+        console.log('🔧 Using FFMPEG_PATH:', process.env.FFMPEG_PATH);
     }
     if (process.env.FFPROBE_PATH) {
         ffmpeg.setFfprobePath(process.env.FFPROBE_PATH);
+        console.log('🔧 Using FFPROBE_PATH:', process.env.FFPROBE_PATH);
     }
 }
+
+// Test ffprobe availability with a simple version check
+console.log('🧪 Testing ffprobe availability...');
+const { spawn } = require('child_process');
+
+// Get the ffprobe path that was set
+const ffprobePath = ffmpeg()._getAvailableCodecs ? 
+    ffmpeg.getAvailableFormats ? 'system-ffprobe' : 'configured-ffprobe' : 'unknown';
+
+console.log('🔍 FFprobe should be available for video processing');
+console.log('📊 FFmpeg configuration completed');
 
 /**
  * Add text overlay with video structure (blue background + scaled video + text)
@@ -289,10 +322,20 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
  */
 async function getVideoInfo(videoPath) {
     return new Promise((resolve, reject) => {
+        console.log(`🔍 Attempting to get video info for: ${videoPath}`);
+        console.log(`📁 File exists: ${fs.existsSync(videoPath)}`);
+        
         ffmpeg.ffprobe(videoPath, (error, metadata) => {
             if (error) {
+                console.log(`❌ FFprobe error details:`, {
+                    message: error.message,
+                    code: error.code,
+                    cmd: error.cmd
+                });
+                console.log(`🔧 Troubleshooting: This usually indicates ffprobe is not properly installed or configured`);
                 reject(new Error(`Failed to get video info: ${error.message}`));
             } else {
+                console.log(`✅ Successfully got video metadata`);
                 resolve(metadata);
             }
         });

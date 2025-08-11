@@ -96,4 +96,5 @@ app.listen(PORT, () => {
     console.log(`📁 Temp directory: ${process.env.TEMP_DIR || './temp'}`);
     console.log(`📁 Output directory: ${process.env.OUTPUT_DIR || './output'}`);
     console.log(`🌐 Access the API at: http://localhost:${PORT}`);
+    console.log("latest commit");
 });
