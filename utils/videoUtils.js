@@ -197,21 +197,21 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
 
                 // Position boxes with zero gap between them
                 const boxY = 20 + (index * fixedBoxHeight);
-                // Center text vertically within the fixed height box
-                const textY = boxY + (fixedBoxHeight - fontSize) / 2;
+                // Use FFmpeg expression for vertical centering: boxY + (boxHeight - text_h) / 2
+                const textYExpr = `${boxY}+(${fixedBoxHeight}-text_h)/2`;
                 const outputLabel = index === wrappedLines.length - 1 ? '' : `[text${index}]`;
 
                 let drawTextFilter;
                 if (fontFile && fs.existsSync(fontFile)) {
-                    drawTextFilter = `${currentInput}drawtext=fontfile='${ffmpegFontPath}':text='${line.replace(/'/g, "\\'")}':fontsize=${fontSize}:fontcolor=${fontColor}:x=(w-text_w)/2:y=${textY}:box=1:boxcolor=${backgroundColor}@0.9:boxborderw=${borderWidth}:bordercolor=${borderColor}:boxh=${fixedBoxHeight}${outputLabel}`;
+                    drawTextFilter = `${currentInput}drawtext=fontfile='${ffmpegFontPath}':text='${line.replace(/'/g, "\\'")}':fontsize=${fontSize}:fontcolor=${fontColor}:x=(w-text_w)/2:y=${textYExpr}:box=1:boxcolor=${backgroundColor}@0.9:boxborderw=${borderWidth}:bordercolor=${borderColor}:boxh=${fixedBoxHeight}${outputLabel}`;
                 } else {
-                    drawTextFilter = `${currentInput}drawtext=text='${line.replace(/'/g, "\\'")}':fontsize=${fontSize}:fontcolor=${fontColor}:x=(w-text_w)/2:y=${textY}:box=1:boxcolor=${backgroundColor}@0.9:boxborderw=${borderWidth}:bordercolor=${borderColor}:boxh=${fixedBoxHeight}${outputLabel}`;
+                    drawTextFilter = `${currentInput}drawtext=text='${line.replace(/'/g, "\\'")}':fontsize=${fontSize}:fontcolor=${fontColor}:x=(w-text_w)/2:y=${textYExpr}:box=1:boxcolor=${backgroundColor}@0.9:boxborderw=${borderWidth}:bordercolor=${borderColor}:boxh=${fixedBoxHeight}${outputLabel}`;
                 }
 
                 complexFilterParts.push(drawTextFilter);
                 currentInput = `[text${index}]`;
 
-                console.log(`📝 Line ${index + 1}: "${line}" at boxY=${boxY}, textY=${textY} with fixed height=${fixedBoxHeight}px`);
+                console.log(`📝 Line ${index + 1}: "${line}" at boxY=${boxY}, textYExpr=${textYExpr} with fixed height=${fixedBoxHeight}px`);
             });
 
             // Join all filter parts with semicolons
