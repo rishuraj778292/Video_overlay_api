@@ -66,7 +66,7 @@ router.post('/', async (req, res) => {
         console.log(`[${requestId}] 🎨 Adding text overlay with video structure...`);
         await addTextOverlayWithStructure(inputPath, outputPath, {
             text,
-            fontSize: 24, // Smaller font size to fit in fixed height boxes
+            fontSize: 30, // Smaller font size to fit in fixed height boxes
             fontColor: 'black',
             fontFamily: 'sans-serif',
             fontFile: './ARIALBD.TTF',
@@ -76,7 +76,7 @@ router.post('/', async (req, res) => {
             borderColor: '#333333', // Dark gray border
             textPadding: 6, // Padding around text inside the box
             lineSpacing: 0, // Zero spacing for connected boxes
-            fixedBoxHeight: 40, // Fixed height for uniform text boxes (centered text)
+            fixedBoxHeight: 65, // Fixed height for uniform text boxes (centered text)
             videoWidth: 1200, // Reduced video width
             videoHeight: 675, // Proportional video height (16:9 aspect)
             videoX: 40, // Small left padding

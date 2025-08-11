@@ -16,7 +16,7 @@ if (process.env.FFMPEG_PATH) {
 async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) {
     const {
         text = 'Sample Text',
-        fontSize = 24,
+        fontSize = 30,
         fontColor = 'black',
         fontFamily = 'sans-serif',
         fontFile = './ARIALBD.TTF', // Hardcoded font file in main folder
@@ -26,7 +26,7 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
         borderColor = 'black',
         textPadding = 3, // Padding around text inside the box
         lineSpacing = 0, // Space between text lines (set to 0 for connected boxes)
-        fixedBoxHeight = 60, // Fixed height for all text boxes
+        fixedBoxHeight = 65, // Fixed height for all text boxes
         videoWidth = 900, // Scaled video width
         videoHeight = 1520, // Scaled video height
         videoX = 60, // Video position X
@@ -36,7 +36,7 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
     } = options;
 
     // Advanced text wrapping: handles user line breaks + 47char auto-wrap
-    function wrapText(text, maxCharsPerLine = 47) {
+    function wrapText(text, maxCharsPerLine = 30) {
         console.log('📝 Original text input:', JSON.stringify(text));
 
         // Step 1: Split by user-entered line breaks (preserve manual breaks)
@@ -112,7 +112,7 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
     }
 
     // Format and wrap the text
-    const wrappedLines = wrapText(text, 47);
+    const wrappedLines = wrapText(text, 30);
 
     // Ensure output directory exists
     const outputDir = path.dirname(outputPath);
@@ -197,8 +197,8 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
 
                 // Position boxes with slight overlap to eliminate gaps between them
                 // Reduce spacing by border width to make boxes touch/overlap
-                const boxSpacing = fixedBoxHeight - (borderWidth * 2)+3;
-                const boxY = 20 + (index * boxSpacing);
+                const boxSpacing = fixedBoxHeight - (borderWidth * 2)-10;
+                const boxY = 30 + (index * boxSpacing);
                 // Use simple calculation for centering (compatible with older FFmpeg)
                 const textY = boxY + Math.floor((fixedBoxHeight - fontSize) / 2);
                 const outputLabel = index === wrappedLines.length - 1 ? '' : `[text${index}]`;
