@@ -197,7 +197,7 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
 
                 // Position boxes with slight overlap to eliminate gaps between them
                 // Reduce spacing by border width to make boxes touch/overlap
-                const boxSpacing = fixedBoxHeight - (borderWidth * 2);
+                const boxSpacing = fixedBoxHeight - (borderWidth * 2)+3;
                 const boxY = 20 + (index * boxSpacing);
                 // Use simple calculation for centering (compatible with older FFmpeg)
                 const textY = boxY + Math.floor((fixedBoxHeight - fontSize) / 2);
