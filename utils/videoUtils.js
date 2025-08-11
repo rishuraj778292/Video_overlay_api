@@ -195,23 +195,25 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
             wrappedLines.forEach((line, index) => {
                 if (line.trim() === '') return; // Skip empty lines
 
-                // Position boxes with zero gap between them
-                const boxY = 20 + (index * fixedBoxHeight);
-                // Use FFmpeg expression for vertical centering: boxY + (boxHeight - text_h) / 2
-                const textYExpr = `${boxY}+(${fixedBoxHeight}-text_h)/2`;
+                // Position boxes with slight overlap to eliminate gaps between them
+                // Reduce spacing by border width to make boxes touch/overlap
+                const boxSpacing = fixedBoxHeight - (borderWidth * 2);
+                const boxY = 20 + (index * boxSpacing);
+                // Use simple calculation for centering (compatible with older FFmpeg)
+                const textY = boxY + Math.floor((fixedBoxHeight - fontSize) / 2);
                 const outputLabel = index === wrappedLines.length - 1 ? '' : `[text${index}]`;
 
                 let drawTextFilter;
                 if (fontFile && fs.existsSync(fontFile)) {
-                    drawTextFilter = `${currentInput}drawtext=fontfile='${ffmpegFontPath}':text='${line.replace(/'/g, "\\'")}':fontsize=${fontSize}:fontcolor=${fontColor}:x=(w-text_w)/2:y=${textYExpr}:box=1:boxcolor=${backgroundColor}@0.9:boxborderw=${borderWidth}:bordercolor=${borderColor}:boxh=${fixedBoxHeight}${outputLabel}`;
+                    drawTextFilter = `${currentInput}drawtext=fontfile='${ffmpegFontPath}':text='${line.replace(/'/g, "\\'")}':fontsize=${fontSize}:fontcolor=${fontColor}:x=(w-text_w)/2:y=${textY}:box=1:boxcolor=${backgroundColor}@0.9:boxborderw=${borderWidth}:bordercolor=${borderColor}${outputLabel}`;
                 } else {
-                    drawTextFilter = `${currentInput}drawtext=text='${line.replace(/'/g, "\\'")}':fontsize=${fontSize}:fontcolor=${fontColor}:x=(w-text_w)/2:y=${textYExpr}:box=1:boxcolor=${backgroundColor}@0.9:boxborderw=${borderWidth}:bordercolor=${borderColor}:boxh=${fixedBoxHeight}${outputLabel}`;
+                    drawTextFilter = `${currentInput}drawtext=text='${line.replace(/'/g, "\\'")}':fontsize=${fontSize}:fontcolor=${fontColor}:x=(w-text_w)/2:y=${textY}:box=1:boxcolor=${backgroundColor}@0.9:boxborderw=${borderWidth}:bordercolor=${borderColor}${outputLabel}`;
                 }
 
                 complexFilterParts.push(drawTextFilter);
                 currentInput = `[text${index}]`;
 
-                console.log(`📝 Line ${index + 1}: "${line}" at boxY=${boxY}, textYExpr=${textYExpr} with fixed height=${fixedBoxHeight}px`);
+                console.log(`📝 Line ${index + 1}: "${line}" at boxY=${boxY}, textY=${textY} with overlapping positioning (spacing=${boxSpacing})`);
             });
 
             // Join all filter parts with semicolons
