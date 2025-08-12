@@ -182,9 +182,7 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
              
             // Position video (centered horizontally, with top padding)
             const videoX = Math.round((canvasWidth - scaledVideoWidth) / 2);
-            let videoY = topPadding + 47;
-            if(caspectRatio>0.56) videoY = topPadding + 55;
-            if(caspectRatio>0.59) videoY = topPadding + 60;
+            let videoY = topPadding + 55;
             if(caspectRatio>1) videoY = topPadding + 80;
 
             // Use complex filter to create the desired layout
