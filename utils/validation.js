@@ -1,7 +1,7 @@
 const { isValidGDriveUrl } = require('./driveUtils');
 
 /**
- * Validate overlay request body (simplified - only URL and text)
+ * Validate overlay request body (simplified - only URL, text, and typeOfVideo)
  * @param {object} body - Request body
  * @returns {object} - Validation result
  */
@@ -23,6 +23,18 @@ function validateOverlayRequest(body) {
         errors.push('text must be a string');
     } else if (body.text.length > 100) {
         errors.push('text must be 100 characters or less');
+    }
+
+    // Validate typeOfVideo (optional, defaults to "edit background")
+    if (body.typeOfVideo) {
+        if (typeof body.typeOfVideo !== 'string') {
+            errors.push('typeOfVideo must be a string');
+        } else {
+            const validTypes = ['edit background', 'dont edit background'];
+            if (!validTypes.includes(body.typeOfVideo.toLowerCase())) {
+                errors.push('typeOfVideo must be either "edit background" or "dont edit background"');
+            }
+        }
     }
 
     return {

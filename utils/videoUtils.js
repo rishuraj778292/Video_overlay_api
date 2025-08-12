@@ -141,10 +141,17 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
             // Get video info first to determine aspect ratio
             const videoInfo = await getVideoInfo(inputPath);
             const videoStream = videoInfo.streams.find(stream => stream.codec_type === 'video');
-            const originalWidth = videoStream.width;
-            const originalHeight = videoStream.height;
-            const aspectRatio = originalWidth / originalHeight;
 
+            // this is for checking  aspect ration
+            const coriginalWidth = videoStream.width;
+            const coriginalHeight = videoStream.height;
+            const caspectRatio = coriginalWidth / coriginalHeight;
+        
+
+              const originalWidth = 464;
+            const originalHeight = 840;
+            const aspectRatio = originalWidth / originalHeight;
+     
             // Get video duration
             const videoDuration = videoInfo.format.duration || videoStream.duration;
 
@@ -171,10 +178,14 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
                 scaledVideoWidth = availableWidth;
                 scaledVideoHeight = Math.round(availableWidth / aspectRatio);
             }
-
+  
+             
             // Position video (centered horizontally, with top padding)
             const videoX = Math.round((canvasWidth - scaledVideoWidth) / 2);
-            const videoY = topPadding + 47;
+            let videoY = topPadding + 47;
+            if(caspectRatio>0.56) videoY = topPadding + 55;
+            if(caspectRatio>0.59) videoY = topPadding + 60;
+            if(caspectRatio>1) videoY = topPadding + 80;
 
             // Use complex filter to create the desired layout
             const complexFilterParts = [
@@ -194,8 +205,9 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
 
                 // Position boxes with slight overlap to eliminate gaps between them
                 // Reduce spacing by border width to make boxes touch/overlap
-                const boxSpacing = fixedBoxHeight - (borderWidth * 2) - 10;
-                const boxY = 30 + (index * boxSpacing);
+                const boxSpacing = fixedBoxHeight - (borderWidth * 2) +11;
+                let boxY = 20 + (index * boxSpacing);
+                if(caspectRatio>1) boxY += 10;
                 // Use simple calculation for centering (compatible with older FFmpeg)
                 const textY = boxY + Math.floor((fixedBoxHeight - fontSize) / 2);
                 const outputLabel = index === wrappedLines.length - 1 ? '' : `[text${index}]`;
@@ -205,6 +217,162 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
                     drawTextFilter = `${currentInput}drawtext=fontfile='${ffmpegFontPath}':text='${line.replace(/'/g, "\\'")}':fontsize=${fontSize}:fontcolor=${fontColor}:x=(w-text_w)/2:y=${textY}:box=1:boxcolor=${backgroundColor}@0.9:boxborderw=${borderWidth}:bordercolor=${borderColor}${outputLabel}`;
                 } else {
                     drawTextFilter = `${currentInput}drawtext=text='${line.replace(/'/g, "\\'")}':fontsize=${fontSize}:fontcolor=${fontColor}:x=(w-text_w)/2:y=${textY}:box=1:boxcolor=${backgroundColor}@0.9:boxborderw=${borderWidth}:bordercolor=${borderColor}${outputLabel}`;
+                }
+
+                complexFilterParts.push(drawTextFilter);
+                currentInput = `[text${index}]`;
+            });
+
+            // Join all filter parts with semicolons
+            const complexFilter = complexFilterParts.join(';');
+
+            const command = ffmpeg(inputPath)
+                .complexFilter(complexFilter)
+                .outputOptions([
+                    '-c:v libx264',     // Use H.264 codec
+                    '-c:a copy',        // Copy audio without re-encoding
+                    '-preset ultrafast', // Faster encoding
+                    '-crf 28',          // Higher CRF for smaller file size
+                    '-movflags +faststart', // Optimize for web streaming
+                    '-f mp4'            // Force MP4 output format
+                ])
+                .output(outputPath)
+                .on('end', async () => {
+                    resolve();
+                })
+                .on('error', async (error) => {
+                    console.error(' FFmpeg error:', error);
+                    reject(new Error(`Video processing failed: ${error.message}`));
+                });
+
+            // Start the processing
+            command.run();
+        } catch (error) {
+            console.error('Error setting up FFmpeg:', error);
+            reject(error);
+        }
+    });
+}
+
+/**
+ * Add text overlay without background editing (directly on top of video)
+ * @param {string} inputPath - Path to input video
+ * @param {string} outputPath - Path to output video
+ * @param {object} options - Text overlay options
+ */
+async function addTextOverlayWithoutBackground(inputPath, outputPath, options = {}) {
+    const {
+        text = 'Sample Text',
+        fontSize = 45,
+        fontColor = 'black',
+        fontFamily = 'sans-serif',
+        fontFile = './ARIALBD.TTF', // Hardcoded font file in main folder
+        backgroundColor = '#fffbb3', // Text background
+        borderWidth = 15, // Border width for text box
+        textPadding = 3, // Padding around text inside the box
+        lineSpacing = 0, // Space between text lines (set to 0 for connected boxes)
+        fixedBoxHeight = 100 // Fixed height for all text boxes
+    } = options;
+
+    // Advanced text wrapping: handles user line breaks + 50char auto-wrap
+    function wrapText(text, maxCharsPerLine = 50) {
+        // Step 1: Split by user-entered line breaks (preserve manual breaks)
+        const userLines = text.split(/\r?\n/);
+        const finalLines = [];
+
+        // Step 2: Process each user line for auto-wrapping at 30 chars
+        userLines.forEach((line, lineIndex) => {
+            if (line.trim() === '') {
+                // Empty line - preserve it
+                finalLines.push('');
+                return;
+            }
+
+            // If line is 30 chars or less, keep as is
+            if (line.length <= maxCharsPerLine) {
+                finalLines.push(line.trim());
+                return;
+            }
+
+            // Line is longer than 30 chars - need to wrap
+            const words = line.trim().split(' ');
+            let currentLine = '';
+
+            for (const word of words) {
+                const testLine = currentLine ? `${currentLine} ${word}` : word;
+
+                if (testLine.length <= maxCharsPerLine) {
+                    currentLine = testLine;
+                } else {
+                    // Current line is full, start new line
+                    if (currentLine) {
+                        finalLines.push(currentLine);
+                        currentLine = word;
+                    } else {
+                        // Single word is longer than 30 chars - split it
+                        if (word.length > maxCharsPerLine) {
+                            let remainingWord = word;
+                            while (remainingWord.length > maxCharsPerLine) {
+                                const chunk = remainingWord.substring(0, maxCharsPerLine);
+                                finalLines.push(chunk);
+                                remainingWord = remainingWord.substring(maxCharsPerLine);
+                            }
+                            if (remainingWord) {
+                                currentLine = remainingWord;
+                            }
+                        } else {
+                            currentLine = word;
+                        }
+                    }
+                }
+            }
+
+            // Add any remaining text
+            if (currentLine) {
+                finalLines.push(currentLine);
+            }
+        });
+
+        return finalLines; // Return array of lines
+    }
+
+    // Format and wrap the text
+    const wrappedLines = wrapText(text, 50);
+
+    // Ensure output directory exists
+    const outputDir = path.dirname(outputPath);
+    await fs.ensureDir(outputDir);
+
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Convert Windows paths to forward slashes for FFmpeg
+            const ffmpegFontPath = fontFile.replace(/\\/g, '/');
+
+            // Use complex filter to add text overlays directly on the video
+            const complexFilterParts = [
+                // Copy input video as base
+                `[0:v]setpts=PTS-STARTPTS[base]`
+            ];
+
+            // Add text overlays in the top area with fixed height boxes and zero gaps
+            let currentInput = '[base]';
+
+            wrappedLines.forEach((line, index) => {
+                if (line.trim() === '') return; // Skip empty lines
+
+                // Position boxes with slight overlap to eliminate gaps between them
+                // Reduce spacing by border width to make boxes touch/overlap
+                const boxSpacing = fixedBoxHeight - (borderWidth * 2) +3;
+                const boxY = 200 + (index * boxSpacing);
+                // Use simple calculation for centering (compatible with older FFmpeg)
+                const textY = boxY + Math.floor((fixedBoxHeight - fontSize) / 2);
+                const outputLabel = index === wrappedLines.length - 1 ? '' : `[text${index}]`;
+
+                let drawTextFilter;
+                if (fontFile && fs.existsSync(fontFile)) {
+                    drawTextFilter = `${currentInput}drawtext=fontfile='${ffmpegFontPath}':text='${line.replace(/'/g, "\\'")}':fontsize=${fontSize}:fontcolor=${fontColor}:x=(w-text_w)/2:y=${textY}:box=1:boxcolor=${backgroundColor}@0.9:boxborderw=${borderWidth}:bordercolor=black${outputLabel}`;
+                } else {
+                    drawTextFilter = `${currentInput}drawtext=text='${line.replace(/'/g, "\\'")}':fontsize=${fontSize}:fontcolor=${fontColor}:x=(w-text_w)/2:y=${textY}:box=1:boxcolor=${backgroundColor}@0.9:boxborderw=${borderWidth}:bordercolor=black${outputLabel}`;
                 }
 
                 complexFilterParts.push(drawTextFilter);
@@ -309,8 +477,8 @@ async function createThumbnail(videoPath, thumbnailPath, timeStamp = 1) {
 }
 
 module.exports = {
-
     addTextOverlayWithStructure,
+    addTextOverlayWithoutBackground,
     getVideoInfo,
     isValidVideo,
     getVideoDuration,
