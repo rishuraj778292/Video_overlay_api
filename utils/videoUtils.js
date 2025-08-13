@@ -146,12 +146,12 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
             const coriginalWidth = videoStream.width;
             const coriginalHeight = videoStream.height;
             const caspectRatio = coriginalWidth / coriginalHeight;
-        
 
-              const originalWidth = 464;
+
+            const originalWidth = 464;
             const originalHeight = 840;
             const aspectRatio = originalWidth / originalHeight;
-     
+
             // Get video duration
             const videoDuration = videoInfo.format.duration || videoStream.duration;
 
@@ -178,12 +178,12 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
                 scaledVideoWidth = availableWidth;
                 scaledVideoHeight = Math.round(availableWidth / aspectRatio);
             }
-  
-             
+
+
             // Position video (centered horizontally, with top padding)
             const videoX = Math.round((canvasWidth - scaledVideoWidth) / 2);
             let videoY = topPadding + 55;
-            if(caspectRatio>1) videoY = topPadding + 80;
+            if (caspectRatio > 1) videoY = topPadding + 80;
 
             // Use complex filter to create the desired layout
             const complexFilterParts = [
@@ -203,10 +203,20 @@ async function addTextOverlayWithStructure(inputPath, outputPath, options = {}) 
 
                 // Position boxes with slight overlap to eliminate gaps between them
                 // Reduce spacing by border width to make boxes touch/overlap
-                const boxSpacing = fixedBoxHeight - (borderWidth * 2) +11;
-                let boxY = 20 + (index * boxSpacing);
-                if(caspectRatio>1) boxY += 10;
-                // Use simple calculation for centering (compatible with older FFmpeg)
+                const boxSpacing = fixedBoxHeight - (borderWidth * 2) + 11;
+                let boxY = (index * boxSpacing);
+                if (caspectRatio > 1) boxY += 10;
+              
+                if (wrappedLines.length === 3) {
+                        boxY = boxY+20;
+                }
+                else if (wrappedLines.length === 2) {
+                            boxY =  boxY+43
+                }
+                else {
+                        boxY = boxY+63
+                }
+                  // Use simple calculation for centering (compatible with older FFmpeg)
                 const textY = boxY + Math.floor((fixedBoxHeight - fontSize) / 2);
                 const outputLabel = index === wrappedLines.length - 1 ? '' : `[text${index}]`;
 
@@ -360,7 +370,7 @@ async function addTextOverlayWithoutBackground(inputPath, outputPath, options = 
 
                 // Position boxes with slight overlap to eliminate gaps between them
                 // Reduce spacing by border width to make boxes touch/overlap
-                const boxSpacing = fixedBoxHeight - (borderWidth * 2) +3;
+                const boxSpacing = fixedBoxHeight - (borderWidth * 2) + 3;
                 const boxY = 200 + (index * boxSpacing);
                 // Use simple calculation for centering (compatible with older FFmpeg)
                 const textY = boxY + Math.floor((fixedBoxHeight - fontSize) / 2);
